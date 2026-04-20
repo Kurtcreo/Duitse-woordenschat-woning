@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Duitse woordenschat – huis</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="min-h-screen bg-slate-100">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useEffect, useMemo, useRef, useState } = React;
+
+    const GAME_WIDTH = 720;
+    const GAME_HEIGHT = 500;
+    const BASKET_WIDTH = 120;
+    const WORD_WIDTH = 70;
+    const WORD_HEIGHT = 70;
+    const BASKET_Y = 440;
+
+    const partsData = [
+      { id: "dak", label: "het dak", german: "das Dach", tip: "Denk aan 'dak' en 'Dach': ze klinken bijna hetzelfde.", dotX: 310, dotY: 92 },
+      { id: "schoorsteen", label: "de schoorsteen", german: "der Schornstein", tip: "In 'Schornstein' hoor je 'Stein': denk aan een stenen schoorsteen.", dotX: 392, dotY: 78 },
+      { id: "huis", label: "het huis", german: "das Haus", tip: "Haus lijkt sterk op het Nederlandse woord 'huis'.", dotX: 178, dotY: 250 },
+      { id: "deur", label: "de deur", german: "die Tür", tip: "Tür klinkt bijna als 'deur', maar dan korter.", dotX: 307, dotY: 302 },
+      { id: "linker-raam", label: "het raam (links)", german: "das Fenster", tip: "Fenster lijkt op het Nederlandse woord 'venster'.", dotX: 244, dotY: 236 },
+      { id: "rechter-raam", label: "het raam (rechts)", german: "das Fenster", tip: "Denk aan 'venster' → Fenster.", dotX: 376, dotY: 236 },
+      { id: "trap", label: "de trap", german: "die Treppe", tip: "Treppe begint met 'trep-', net als in 'trede' en 'trap'.", dotX: 307, dotY: 384 },
+      { id: "boom", label: "de boom", german: "der Baum", tip: "Baum klinkt een beetje zoals 'boom'.", dotX: 560, dotY: 178 },
+      { id: "stam", label: "de stam", german: "der Stamm", tip: "Stam en Stamm zijn bijna identiek.", dotX: 562, dotY: 300 },
+      { id: "gras", label: "het gras", german: "das Gras", tip: "Gras is in het Duits gewoon ook 'Gras'.", dotX: 470, dotY: 414 },
+    ];
+
+    const learnedPairs = [
+      { dutch: "het dak", german: "das Dach" },
+      { dutch: "de schoorsteen", german: "der Schornstein" },
+      { dutch: "het huis", german: "das Haus" },
+      { dutch: "de deur", german: "die Tür" },
+      { dutch: "het raam", german: "das Fenster" },
+      { dutch: "de trap", german: "die Treppe" },
+      { dutch: "de boom", german: "der Baum" },
+      { dutch: "de stam", german: "der Stamm" },
+      { dutch: "het gras", german: "das Gras" },
+    ];
+
+    const distractors = [
+      "die Wand", "der Garten", "der Boden", "das Dachfenster", "der Eingang",
+      "das Zimmer", "der Stuhl", "der Tisch", "die Lampe", "die Wanduhr"
+    ];
+
+    function getArticleColor(article) {
+      if (article === "der") return "text-blue-700";
+      if (article === "die") return "text-blue-500";
+      if (article === "das") return "text-slate-700";
+      return "text-slate-900";
+    }
+
+    function Menu({ setMode }) {
+      return (
+        <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50 p-6">
+          <div className="absolute inset-0 opacity-60">
+            <div className="absolute -left-20 top-10 h-72 w-72 rounded-full bg-blue-200/35 blur-3xl"></div>
+            <div className="absolute right-0 top-0 h-96 w-96 rounded-full bg-blue-300/20 blur-3xl"></div>
+            <div className="absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-slate-300/20 blur-3xl"></div>
+          </div>
+
+          <div className="relative w-full max-w-5xl">
+            <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="rounded-[2rem] border border-white/80 bg-white/90 p-10 shadow-[0_20px_80px_rgba(30,41,59,0.10)] backdrop-blur-xl">
+                <div className="mb-8 inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-4 py-1 text-sm font-medium text-blue-700">
+                  Interactieve taalapp
+                </div>
+                <h1 className="mb-4 text-4xl font-black tracking-tight text-slate-900">Duitse woordenschat</h1>
+                <p className="mb-8 max-w-md text-base leading-7 text-slate-600">
+                  Oefen woordenschat rond het huis met drie modi: herkennen, schrijven en een snel reactiespel.
+                </p>
+
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setMode("herkennen")}
+                    className="group flex w-full items-center justify-between rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-700 to-blue-600 px-5 py-4 text-left text-white shadow-lg shadow-blue-900/20 transition hover:-translate-y-0.5"
+                  >
+                    <div>
+                      <div className="text-lg font-bold">Herkennen</div>
+                      <div className="text-sm text-blue-50">Klik op de prent en ontdek het Duitse woord</div>
+                    </div>
+                    <div className="rounded-full bg-white/20 px-3 py-1 text-sm font-semibold">Start</div>
+                  </button>
+
+                  <button
+                    onClick={() => setMode("schrijven")}
+                    className="group flex w-full items-center justify-between rounded-2xl border border-slate-300 bg-gradient-to-r from-slate-800 to-slate-700 px-5 py-4 text-left text-white shadow-lg shadow-slate-900/15 transition hover:-translate-y-0.5"
+                  >
+                    <div>
+                      <div className="text-lg font-bold">Schrijven</div>
+                      <div className="text-sm text-slate-100">Typ zelf het juiste Duitse woord</div>
+                    </div>
+                    <div className="rounded-full bg-white/20 px-3 py-1 text-sm font-semibold">Oefen</div>
+                  </button>
+
+                  <button
+                    onClick={() => setMode("spel")}
+                    className="group flex w-full items-center justify-between rounded-2xl border border-blue-300 bg-gradient-to-r from-blue-800 to-slate-700 px-5 py-4 text-left text-white shadow-lg shadow-blue-900/15 transition hover:-translate-y-0.5"
+                  >
+                    <div>
+                      <div className="text-lg font-bold">Spel</div>
+                      <div className="text-sm text-blue-50">Vang de juiste Duitse woorden in 1 minuut</div>
+                    </div>
+                    <div className="rounded-full bg-white/20 px-3 py-1 text-sm font-semibold">Speel</div>
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-[2rem] border border-blue-900/10 bg-slate-900 p-8 text-white shadow-[0_20px_80px_rgba(15,23,42,0.16)]">
+                <div className="mb-6 flex items-center gap-3">
+                  <div className="h-3 w-3 rounded-full bg-blue-600"></div>
+                  <div className="h-3 w-3 rounded-full bg-slate-400"></div>
+                  <div className="h-3 w-3 rounded-full bg-blue-300"></div>
+                </div>
+                <h2 className="mb-3 text-2xl font-bold">Leren met kleur en focus</h2>
+                <p className="mb-8 text-sm leading-7 text-slate-300">
+                  De app combineert herkenning, actieve schrijfopdrachten en spelelementen om woorden sneller te onthouden.
+                </p>
+                <div className="grid gap-3">
+                  <div className="rounded-2xl bg-white/10 p-4">
+                    <div className="text-sm text-slate-300">Herkennen</div>
+                    <div className="text-lg font-semibold text-blue-300">Visueel en intuïtief</div>
+                  </div>
+                  <div className="rounded-2xl bg-white/10 p-4">
+                    <div className="text-sm text-slate-300">Schrijven</div>
+                    <div className="text-lg font-semibold text-slate-200">Actief inoefenen</div>
+                  </div>
+                  <div className="rounded-2xl bg-white/10 p-4">
+                    <div className="text-sm text-slate-300">Spel</div>
+                    <div className="text-lg font-semibold text-blue-200">Snelheid en motivatie</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function HouseSvg({ selectedId, onSelect }) {
+      return (
+        <div className="overflow-hidden rounded-[1.5rem] border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-slate-50">
+          <svg viewBox="0 0 700 460" className="h-full w-full">
+            <rect x="0" y="0" width="700" height="460" fill="#dff2ff" />
+            <rect x="0" y="390" width="700" height="70" fill="#cfecc3" />
+            <ellipse cx="560" cy="210" rx="75" ry="85" fill="#6bbf59" />
+            <rect x="548" y="260" width="28" height="90" rx="8" fill="#8b5a3c" />
+            <rect x="190" y="160" width="240" height="205" rx="6" fill="#f3d19c" />
+            <polygon points="310,35 470,160 150,160" fill="#d97345" />
+            <rect x="375" y="48" width="34" height="84" fill="#b96038" />
+            <rect x="220" y="210" width="48" height="52" fill="#bfe3ff" />
+            <rect x="352" y="210" width="48" height="52" fill="#bfe3ff" />
+            <rect x="278" y="245" width="58" height="120" rx="4" fill="#92603e" />
+            <rect x="252" y="366" width="110" height="12" fill="#c9b08b" />
+            <rect x="245" y="378" width="124" height="12" fill="#b99d73" />
+
+            {partsData.map((part) => {
+              const isSelected = selectedId === part.id;
+              return (
+                <g key={part.id}>
+                  <line
+                    x1={part.dotX}
+                    y1={part.dotY}
+                    x2={part.dotX + 28}
+                    y2={part.dotY - 28}
+                    stroke={isSelected ? "#1d4ed8" : "#64748b"}
+                    strokeWidth="2"
+                  />
+                  <circle
+                    cx={part.dotX}
+                    cy={part.dotY}
+                    r={isSelected ? "11" : "9"}
+                    fill={isSelected ? "#2563eb" : "#ffffff"}
+                    stroke={isSelected ? "#1d4ed8" : "#475569"}
+                    strokeWidth="3"
+                    className="cursor-pointer transition-all"
+                    onClick={() => onSelect(part)}
+                  />
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      );
+    }
+
+    function InteractiveHouse({ mode }) {
+      const [selected, setSelected] = useState(partsData[0]);
+      const [input, setInput] = useState("");
+      const [feedback, setFeedback] = useState(null);
+
+      function checkAnswer() {
+        const correct = selected.german.trim().toLowerCase();
+        const answer = input.trim().toLowerCase();
+
+        if (!answer) {
+          setFeedback({ type: "wrong", text: "Typ eerst een antwoord in. Tip: " + selected.tip });
+          return;
+        }
+
+        if (answer === correct) {
+          setFeedback({ type: "correct", text: "Goed gedaan! 👍" });
+        } else {
+          setFeedback({
+            type: "wrong",
+            text: "Nog niet juist. Het juiste woord is: '" + selected.german + "'. Tip: " + selected.tip,
+          });
+        }
+      }
+
+      function selectPart(part) {
+        setSelected(part);
+        setInput("");
+        setFeedback(null);
+      }
+
+      const article = selected.german.split(" ")[0];
+      const noun = selected.german.split(" ").slice(1).join(" ");
+
+      return (
+        <div className="grid gap-6 lg:grid-cols-[1.6fr_0.9fr]">
+          <div className="rounded-[2rem] border border-blue-100/80 bg-white shadow-[0_12px_40px_rgba(16,24,40,0.08)]">
+            <div className="p-4">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <p className="text-sm text-slate-600">Interactieve prent</p>
+              </div>
+              <HouseSvg selectedId={selected.id} onSelect={selectPart} />
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-blue-100/80 bg-white shadow-[0_12px_40px_rgba(16,24,40,0.08)]">
+            <div className="space-y-4 p-6">
+              {mode === "herkennen" && (
+                <>
+                  <div>
+                    <p className="text-sm text-slate-500">Duits woord</p>
+                    <h2 className="text-3xl font-bold">
+                      <span className={getArticleColor(article)}>{article}</span>{" "}
+                      <span>{noun}</span>
+                    </h2>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm text-slate-500">Onderdeel</p>
+                    <p className="text-lg font-semibold">{selected.label}</p>
+                  </div>
+                </>
+              )}
+
+              {mode === "schrijven" && (
+                <>
+                  <div>
+                    <p className="text-sm text-slate-500">Schrijf het Duitse woord voor:</p>
+                    <h2 className="text-2xl font-semibold">{selected.label}</h2>
+                  </div>
+
+                  <input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && checkAnswer()}
+                    placeholder="Typ het Duitse woord..."
+                    className="w-full rounded-2xl border border-blue-200 bg-white px-4 py-3 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  />
+
+                  <button
+                    className="rounded-xl border-0 bg-blue-700 px-4 py-2 font-medium text-white hover:bg-blue-800"
+                    onClick={checkAnswer}
+                  >
+                    Controleer
+                  </button>
+
+                  {feedback && (
+                    <div
+                      className={`rounded-xl border p-4 text-sm ${
+                        feedback.type === "correct"
+                          ? "border-blue-200 bg-blue-50 text-blue-900"
+                          : "border-slate-300 bg-slate-50 text-slate-900"
+                      }`}
+                    >
+                      {feedback.text}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function WordCatchGame() {
+      const [score, setScore] = useState(0);
+      const [timeLeft, setTimeLeft] = useState(60);
+      const [isRunning, setIsRunning] = useState(true);
+      const [basketX, setBasketX] = useState(GAME_WIDTH / 2 - BASKET_WIDTH / 2);
+      const [targetIndex, setTargetIndex] = useState(0);
+      const [words, setWords] = useState([]);
+      const [message, setMessage] = useState("Beweeg met je muis of met de pijltjestoetsen.");
+      const [firstSpawnPending, setFirstSpawnPending] = useState(true);
+      const rafRef = useRef(null);
+
+      const target = learnedPairs[targetIndex];
+      const difficultyLevel = Math.floor(score / 2);
+      const spawnInterval = Math.max(450, 1000 - difficultyLevel * 70);
+      const baseSpeed = 1.2 + difficultyLevel * 0.25;
+
+      function randomIndex(excludeIndex) {
+        let index = Math.floor(Math.random() * learnedPairs.length);
+        if (learnedPairs.length > 1) {
+          while (index === excludeIndex) {
+            index = Math.floor(Math.random() * learnedPairs.length);
+          }
+        }
+        return index;
+      }
+
+      function clampBasket(value) {
+        return Math.max(0, Math.min(GAME_WIDTH - BASKET_WIDTH, value));
+      }
+
+      function addWord(forceCorrect = false) {
+        setWords((current) => {
+          if (current.length > 8) return current;
+
+          const alreadyHasCorrectWord = current.some((word) => word.isCorrect);
+          const shouldBeCorrect = forceCorrect || (!alreadyHasCorrectWord && Math.random() < 0.18);
+
+          let germanWord;
+          if (shouldBeCorrect) {
+            germanWord = learnedPairs[targetIndex].german;
+          } else if (Math.random() < 0.6) {
+            germanWord = distractors[Math.floor(Math.random() * distractors.length)];
+          } else {
+            germanWord = learnedPairs[randomIndex(targetIndex)].german;
+          }
+
+          return [
+            ...current,
+            {
+              id: Date.now() + Math.floor(Math.random() * 100000),
+              german: germanWord,
+              x: Math.max(10, Math.min(GAME_WIDTH - WORD_WIDTH - 10, Math.random() * (GAME_WIDTH - WORD_WIDTH - 20) + 10)),
+              y: -10,
+              speed: baseSpeed + Math.random() * (1.4 + difficultyLevel * 0.18),
+              isCorrect: germanWord === learnedPairs[targetIndex].german,
+            },
+          ];
+        });
+      }
+
+      function startNewGame() {
+        setScore(0);
+        setTimeLeft(60);
+        setIsRunning(true);
+        setBasketX(GAME_WIDTH / 2 - BASKET_WIDTH / 2);
+        setWords([]);
+        setMessage("Beweeg met je muis of met de pijltjestoetsen.");
+        setTargetIndex(Math.floor(Math.random() * learnedPairs.length));
+        setFirstSpawnPending(true);
+      }
+
+      useEffect(() => {
+        startNewGame();
+      }, []);
+
+      useEffect(() => {
+        if (!isRunning) return;
+        const timer = window.setInterval(() => {
+          setTimeLeft((value) => {
+            if (value <= 1) {
+              setIsRunning(false);
+              return 0;
+            }
+            return value - 1;
+          });
+        }, 1000);
+        return () => window.clearInterval(timer);
+      }, [isRunning]);
+
+      useEffect(() => {
+        if (!isRunning) return;
+        if (firstSpawnPending) {
+          addWord(true);
+          setFirstSpawnPending(false);
+          return;
+        }
+        const spawner = window.setInterval(() => {
+          addWord(false);
+        }, spawnInterval);
+        return () => window.clearInterval(spawner);
+      }, [isRunning, firstSpawnPending, spawnInterval, targetIndex, baseSpeed, difficultyLevel]);
+
+      useEffect(() => {
+        if (!isRunning) return;
+
+        const update = () => {
+          setWords((current) => {
+            const moved = current
+              .map((word) => ({ ...word, y: word.y + word.speed }))
+              .filter((word) => word.y < GAME_HEIGHT + 60);
+
+            const basketLeft = basketX;
+            const basketRight = basketX + BASKET_WIDTH;
+            let caughtCorrect = false;
+            let caughtWrong = false;
+
+            const remaining = moved.filter((word) => {
+              const overlapsHorizontally = word.x + WORD_WIDTH > basketLeft && word.x < basketRight;
+              const reachesBasket = word.y + WORD_HEIGHT >= BASKET_Y && word.y <= BASKET_Y + 34;
+              const isCaught = overlapsHorizontally && reachesBasket;
+
+              if (!isCaught) return true;
+
+              if (word.isCorrect) caughtCorrect = true;
+              else caughtWrong = true;
+              return false;
+            });
+
+            if (caughtCorrect) {
+              setScore((value) => value + 1);
+              setTargetIndex((currentIndex) => randomIndex(currentIndex));
+              setMessage("Goed gevangen!");
+              return [];
+            }
+
+            if (caughtWrong) setMessage("Oeps, dat was niet het juiste woord.");
+            return remaining;
+          });
+
+          rafRef.current = requestAnimationFrame(update);
+        };
+
+        rafRef.current = requestAnimationFrame(update);
+        return () => cancelAnimationFrame(rafRef.current);
+      }, [basketX, isRunning]);
+
+      useEffect(() => {
+        function onKeyDown(event) {
+          if (!isRunning) return;
+          if (event.key === "ArrowLeft") setBasketX((value) => clampBasket(value - 30));
+          if (event.key === "ArrowRight") setBasketX((value) => clampBasket(value + 30));
+        }
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+      }, [isRunning]);
+
+      return (
+        <div className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="rounded-[2rem] border border-blue-100 bg-white shadow-[0_12px_40px_rgba(16,24,40,0.08)] md:col-span-1">
+              <div className="space-y-4 p-5">
+                <div>
+                  <p className="text-sm text-slate-500">Nog te vangen</p>
+                  <h2 className="text-2xl font-bold">{target.dutch}</h2>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm text-slate-500">Score</p>
+                  <p className="text-3xl font-bold">{score}</p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm text-slate-500">Timer</p>
+                  <p className="text-3xl font-bold">{timeLeft}s</p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm text-slate-500">Niveau</p>
+                  <p className="text-3xl font-bold">{difficultyLevel + 1}</p>
+                </div>
+
+                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
+                  {isRunning ? message : `Tijd om! Je eindscore is ${score}.`}
+                </div>
+
+                <button
+                  className="rounded-xl bg-gradient-to-r from-blue-700 to-slate-700 px-4 py-2 font-medium text-white hover:from-blue-800 hover:to-slate-800"
+                  onClick={startNewGame}
+                >
+                  {isRunning ? "Herstart spel" : "Speel opnieuw"}
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border border-blue-100 bg-white shadow-[0_12px_40px_rgba(16,24,40,0.08)] md:col-span-3">
+              <div className="p-4">
+                <div
+                  className="relative mx-auto overflow-hidden rounded-[1.75rem] border border-blue-200 bg-slate-950 shadow-[0_20px_60px_rgba(15,23,42,0.18)]"
+                  style={{ width: GAME_WIDTH, height: GAME_HEIGHT, maxWidth: "100%" }}
+                  onMouseMove={(event) => {
+                    if (!isRunning) return;
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const relativeX = ((event.clientX - rect.left) / rect.width) * GAME_WIDTH;
+                    setBasketX(clampBasket(relativeX - BASKET_WIDTH / 2));
+                  }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-blue-950 to-slate-900"></div>
+
+                  {Array.from({ length: 40 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="absolute rounded-full bg-white/80"
+                      style={{
+                        width: 3,
+                        height: 3,
+                        left: `${(index * 67) % GAME_WIDTH}px`,
+                        top: `${(index * 91) % 360}px`,
+                      }}
+                    ></div>
+                  ))}
+
+                  {words.map((word) => (
+                    <div
+                      key={word.id}
+                      className="absolute flex items-center justify-center rounded-full border-2 border-blue-200 bg-blue-100 text-[11px] font-bold text-blue-950 shadow-xl"
+                      style={{
+                        left: word.x,
+                        top: word.y,
+                        width: WORD_WIDTH,
+                        height: WORD_HEIGHT,
+                        padding: 6,
+                        textAlign: "center",
+                        lineHeight: "1.1",
+                      }}
+                    >
+                      {word.german}
+                    </div>
+                  ))}
+
+                  <div
+                    className="absolute flex items-end justify-center"
+                    style={{ left: basketX, top: BASKET_Y - 10, width: BASKET_WIDTH, height: 50 }}
+                  >
+                    <div className="relative h-8 w-full rounded-b-3xl border-2 border-blue-900 bg-gradient-to-b from-blue-700 to-blue-800 shadow-lg">
+                      <div className="absolute -top-4 left-2 right-2 h-4 rounded-t-full border-2 border-blue-900 bg-blue-200/30"></div>
+                    </div>
+                  </div>
+
+                  {!isRunning && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
+                      <div className="rounded-[2rem] bg-white p-8 text-center shadow-2xl">
+                        <p className="text-sm text-slate-500">Einde van het spel</p>
+                        <h3 className="mt-2 text-3xl font-bold">Score: {score}</h3>
+                        <p className="mt-3 text-slate-600">Je speelde 1 minuut en ving de juiste Duitse woorden.</p>
+                        <button
+                          className="mt-5 rounded-xl bg-gradient-to-r from-blue-700 to-slate-700 px-4 py-2 font-medium text-white hover:from-blue-800 hover:to-slate-800"
+                          onClick={startNewGame}
+                        >
+                          Speel opnieuw
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [mode, setMode] = useState(null);
+
+      if (!mode) return <Menu setMode={setMode} />;
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 p-6">
+          <div className="mx-auto max-w-6xl rounded-[2rem] border border-white/80 bg-white/90 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.10)] backdrop-blur">
+            <div className="mb-6 flex items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-blue-50 via-white to-slate-50 p-5">
+              <div>
+                <p className="mb-1 text-sm font-medium uppercase tracking-[0.18em] text-blue-700">Duitse woordenschat</p>
+                <h1 className="text-3xl font-black tracking-tight text-slate-900">Huis en omgeving</h1>
+              </div>
+              <button
+                className="rounded-xl border-0 bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-800"
+                onClick={() => setMode(null)}
+              >
+                Menu
+              </button>
+            </div>
+
+            {mode === "spel" ? <WordCatchGame /> : <InteractiveHouse mode={mode} />}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
